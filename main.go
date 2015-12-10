@@ -11,24 +11,30 @@ import (
 	"flag"
 	"fmt"
 	"go/build"
+	"os"
+	"strings"
 
 	"golang.org/x/tools/refactor/importgraph"
 )
 
-func printGraph(pkg string) error {
-	// TODO: pkg is unused
+var (
+	// TODO: join paths properly
+	VENDORS = []string{"/vendor", "/GoDeps"}
+)
+
+func printGraph(pkgs []string) error {
 	graph, _, errs := importgraph.Build(&build.Default)
 	for _, err := range errs {
-		// TODO: print all errors
-		if err != nil {
-			return err
-		}
+		fmt.Fprintln(os.Stderr, err)
+		return fmt.Errorf("Failed to build import graph.")
 	}
 
 	fmt.Println("digraph {")
 	
 	for fromPkg, imports := range graph {
-		// TODO: filter out packages
+		if !includePkg(fromPkg, pkgs) {
+			continue
+		}
 		for toPkg := range imports {
 			fmt.Printf("  %q -> %q;\n", fromPkg, toPkg)
 		}
@@ -38,11 +44,29 @@ func printGraph(pkg string) error {
 	return nil
 }
 
+func isVendoredPkg(pkg string, include string) bool {
+	for _, vendor := range VENDORS {
+		if strings.HasPrefix(pkg, include + vendor) {
+			return true
+		}
+	}
+	return false
+}
+
+func includePkg(pkg string, includes []string) bool {
+	for _, include := range includes {
+		if strings.HasPrefix(pkg, include) && !isVendoredPkg(pkg, include) {
+			return true
+		}
+	}
+	return false
+}
 
 func main() {
 	flag.Parse()
-	for _, pkg := range flag.Args() {
-		// TODO: handle errors
-		printGraph(pkg)
+	err := printGraph(flag.Args())
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error: ", err)
+		os.Exit(1)
 	}
 }

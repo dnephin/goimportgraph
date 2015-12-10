@@ -27,6 +27,3 @@ test-unit: build
 	docker run --rm -ti $(VOLUMES) $(DOCKER_IMAGE) go test -v \$(glide novendor)
 
 test: test-unit
-
-image:
-	docker build -t $(USER)/$(PROJECT) -f Dockerfile.run .
